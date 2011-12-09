@@ -2,10 +2,9 @@ var
   vows = require('vows'),
   assert = require('assert'),
   fs = require('fs'),
-  config = JSON.parse(fs.readFileSync(__dirname + '/../../config.json', 'utf8')),
-  options = config.opensrs,
+  options = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8')),
   createClient = function (options) {
-    return require('../../lib/opensrs').createClient(options)
+    return require('../lib/opensrs').createClient(options)
   };
 
 // Create a Test Suite
