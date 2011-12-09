@@ -1,0 +1,29 @@
+{
+  "name": "node-opensrs",
+  "description": "OpenSRS Reseller API module for node.js.",
+  "version": "0.0.1",
+  "private": true,
+  "config" : { "publishtest" : false },
+  "author" : "Lupo Montero <lupo@e-noise.com> (http://lupomontero.e-noise.com)",
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/E-NOISE/node-opensrs"
+  },
+  "bugs" : {
+    "url" : "http://github.com/E-NOISE/node-opensrs/issues"
+  },
+  "directories": {
+    "test": "./test",
+    "doc": "./docs"
+  },
+  "main": "index",
+  "dependencies": {
+    "node-xml": ">= 1.0.0"
+  },
+  "devDependencies": {
+    "vows": ">= 0.6.0",
+    "jslint": ">= 0.1.0",
+    "docco": ">= 0.3.0"
+  },
+  "engines": { "node": ">= 0.6.2" }
+}
