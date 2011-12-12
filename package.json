@@ -7,18 +7,18 @@
   "author" : "Lupo Montero <lupo@e-noise.com> (http://lupomontero.e-noise.com)",
   "repository" : {
     "type" : "git",
-    "url" : "https://github.com/E-NOISE/node-opensrs"
+    "url" : "https://github.com/lupomontero/node-opensrs"
   },
   "bugs" : {
-    "url" : "http://github.com/E-NOISE/node-opensrs/issues"
+    "url" : "http://github.com/lupomontero/node-opensrs/issues"
   },
   "directories": {
     "test": "./test",
     "doc": "./docs"
   },
-  "main": "index",
+  "main": "lib/opensrs",
   "dependencies": {
-    "node-xml": ">= 1.0.0"
+    "node-xml": "git+ssh://git@github.com:lupomontero/node-xml.git#v1.0.0"
   },
   "devDependencies": {
     "vows": ">= 0.6.0",
