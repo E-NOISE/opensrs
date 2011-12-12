@@ -5,10 +5,18 @@ var
   options = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8')),
   createClient = function (options) {
     return require('../lib/opensrs').createClient(options)
+  },
+
+  // heper functions
+  pad = function (n) { return (n < 10) ? '0' + n : n },
+
+  formatDate = function (date) {
+    return [ date.getFullYear(), pad((date.getMonth()+1)), pad(date.getDate()) ].join('-');
   };
 
 // Create a Test Suite
 vows.describe('OpenSRS reseller API client').addBatch({
+
   'parse bad XML response': {
     topic: function () {
       var
@@ -22,6 +30,7 @@ vows.describe('OpenSRS reseller API client').addBatch({
       assert.ok(!res);
     }
   },
+
   'parse a balance get_balance XML response': {
     topic: function () {
       var
@@ -68,6 +77,7 @@ vows.describe('OpenSRS reseller API client').addBatch({
       assert.ok(obj.attributes.hold_balance && obj.attributes.hold_balance === 10.34);
     }
   },
+
   'parse a domain get_domains_by_expiredate XML response': {
     topic: function () {
       var
@@ -148,6 +158,7 @@ vows.describe('OpenSRS reseller API client').addBatch({
       assert.ok(obj.attributes.exp_domains[0].hasOwnProperty('f_auto_renew'));
     }
   },
+
   'on connect event': {
     topic: function () {
       var self = this, client = createClient(options);
@@ -163,6 +174,7 @@ vows.describe('OpenSRS reseller API client').addBatch({
       assert.ok(server.port);
     }
   },
+
   'on request event': {
     topic: function () {
       var self = this, client = createClient(options);
@@ -178,6 +190,7 @@ vows.describe('OpenSRS reseller API client').addBatch({
       assert.ok(/OPS_envelope/.test(req));
     }
   },
+
   'on response event': {},
   'balance' : {
     topic: function () {
@@ -194,5 +207,50 @@ vows.describe('OpenSRS reseller API client').addBatch({
       assert.ok(data.attributes.balance);
       //assert.ok(data.attributes.hold_balance);
     }
+  },
+
+  'test get_domains_by_expiredate': {
+    topic: function () {
+      var
+        client = createClient(options),
+        now = new Date(),
+        params = {
+          exp_from: formatDate(now),
+          exp_to: formatDate(new Date(+now + 60*24*60*60*1000)), //60 days from now
+          limit: 300
+        };
+
+      client.send('domain', 'get_domains_by_expiredate', params, this.callback);
+    },
+    'get exp_domains': function (er, data) {
+      assert.ok(!er);
+      assert.ok(data && data.is_success);
+      assert.ok(data.attributes && data.attributes.exp_domains);
+    }
+  },
+
+  'test multiple sequential and concurrent calls': {
+    topic: function () {
+      var self = this, client = createClient(options);
+
+      client.send('balance', 'get_balance', function (er, data) {});
+      client.send('balance', 'get_balance', function (er, data) {
+        var
+          now = new Date(),
+          params = {
+            exp_from: formatDate(now),
+            exp_to: formatDate(new Date(+now + 60*24*60*60*1000)), //60 days from now
+            limit: 30
+          };
+
+        client.send('domain', 'get_domains_by_expiredate', params, self.callback);
+      });
+    },
+    'get exp_domains': function (er, data) {
+      assert.ok(!er);
+      assert.ok(data && data.is_success);
+      assert.ok(data.attributes && data.attributes.exp_domains);
+    }
   }
+
 }).export(module);
