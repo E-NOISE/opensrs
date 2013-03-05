@@ -9,15 +9,24 @@
 // Dependencies and module's globals
 
 var
+  Stream = require('stream'),
   util = require('util'),
   events = require('events'),
   tls = require('tls'),
   crypto = require('crypto'),
   xml = require('node-xml'),
+  _ = require('underscore'),
   rpc_handler_version = '0.9',
   rpc_handler_port = 55443,
-  host = 'rr-n1-tor.opensrs.net',
-  endl = '\r\n';
+  host = function (testMode) {
+    if (testMode) { return 'horizon.opensrs.net'; }
+    return 'rr-n1-tor.opensrs.net';
+  },
+  defaults = {
+    user: null,
+    key: null,
+    test_mode: false
+  };
 
 // ## Private functions
 
@@ -85,18 +94,26 @@ var signRequest = function (xml, key) {
   return hash.digest('hex');
 };
 
-var buildRequest = function (user, key, xml) {
-  var headers = 'POST ' + host + ' HTTP/1.0' + endl;
+var buildRequest = function (host, user, key, xml) {
+  var
+    eol = '\r\n',
+    headers = 'POST ' + host + ' HTTP/1.0' + eol;
 
-  headers += 'Content-Type: text/xml' + endl;
-  headers += 'X-Username: ' + user + endl;
-  headers += 'X-Signature: ' + signRequest(xml, key) + endl;
-  headers += 'Content-Length: ' + xml.length + endl;
+  headers += 'Content-Type: text/xml' + eol;
+  headers += 'X-Username: ' + user + eol;
+  headers += 'X-Signature: ' + signRequest(xml, key) + eol;
+  headers += 'Content-Length: ' + xml.length + eol;
 
-  return headers + endl + xml;
+  return headers + eol + xml;
 };
 
 /*}}}*/
+
+function createResponse() {
+  var s = new Stream();
+  s.readable = true;
+  return s;
+}
 
 // ## OpenSRS Client Object
 
@@ -107,44 +124,12 @@ var buildRequest = function (user, key, xml) {
 // #### Arguments
 // * _Object_ **options**
 var OpenSRS = function (options) {
-  if (options.test_mode) { host = 'horizon.opensrs.net'; }
-
-  this.user = options.user;
-  this.key = options.key;
-  this.cookie = null;
-  this.status = 'disconnected';
-  this.stream = null;
-
-  events.EventEmitter.call(this);
+  this.options = _.extend({}, defaults, options);
+  this._activeRequests = 0;
 };
 
 // inherit events.EventEmitter
 util.inherits(OpenSRS, events.EventEmitter);
-
-OpenSRS.prototype.connect = function (cb) {
-  var self = this;
-
-  cb = cb || function () {};
-
-  self.stream = tls.connect(rpc_handler_port, host, function () {
-    if (!self.stream || !self.stream.readable || !self.stream.writable) {
-      cb(new Error('Could not connect to server ' + host + ' on port ' + rpc_handler_port));
-    }
-
-    self.status = 'connected';
-    self.emit('connect', { host: host, port: rpc_handler_port });
-    cb(null, true);
-  });
-
-  self.stream.on('close', function () {
-    self.status = 'disconnected';
-  });
-
-  self.stream.on('error', function () {
-    self.status = 'disconnected';
-    console.log('stream threw error!');
-  });
-};
 
 // ### Send API request.
 //
@@ -156,76 +141,82 @@ OpenSRS.prototype.connect = function (cb) {
 // * _Function_ **cb** Callback function invoked when the response is complete.
 //   This function will have two arguments passed to it, an error object and the
 //   response data. If successful the error object will be null.
-OpenSRS.prototype.send = function (obj, method, params, cb) {
-  var self = this, xml, request, responseRaw = '';
+OpenSRS.prototype.req = function () {
+  var
+    self = this,
+    args = Array.prototype.slice.call(arguments, 0),
+    obj = args.shift(),
+    method = args.shift(),
+    cb = args.pop() || function () {},
+    params = args.shift(),
+    hostname = host(self.options.test_mode),
+    xml = buildXmlPayload(obj, method, params),
+    request = buildRequest(hostname, self.options.user, self.options.key, xml),
+    rs = createResponse(),
+    stream, responseRaw = '';
 
-  if (typeof params === 'function') {
-    cb = params;
-    params = null;
+  function done(err, data) {
+    self._activeRequests--;
+    if (err) {
+      rs.emit('error', err);
+    } else {
+      rs.emit('data', data);
+    }
+    rs.emit('end');
+    cb(err, data);
   }
 
-  // auto-connect if needed
-  if (self.status !== 'connected') {
-    return self.connect(function (er, success) {
-      if (er) { return cb(er); }
-      self.send(obj, method, params, cb);
-    });
-  }
-
-  // set status to sending to avoid sending simultaneous requests
-  self.status = 'sending';
-
-  xml = buildXmlPayload(obj, method, params);
-  request = buildRequest(self.user, self.key, xml);
-
+  self._activeRequests++;
   self.emit('request', request);
 
-  self.stream.on('data', function (data) {
-    responseRaw += data.toString();
-  });
-
-  self.stream.on('end', function () {
-    var
-      i,
-      lines = responseRaw.split('\n'),
-      flag = false,
-      responseXml = '';
-
-    self.emit('response', responseRaw);
-
-    for (i = 0; i < lines.length; i++) {
-      if (flag) {
-        responseXml += lines[i] + '\n';
-      } else if (/^<\?xml/.test(lines[i].trim())) {
-        flag = true;
-        i--;
-      } else if (lines[i].trim() === '') {
-        flag = true;
-      }
+  stream = tls.connect(rpc_handler_port, hostname, function () {
+    if (!stream || !stream.readable || !stream.writable) {
+      return done(new Error('Could not connect to server ' + hostname +
+                            ' on port ' + rpc_handler_port));
     }
 
-    if (responseXml === '') {
-      cb(null, '');
-      return;
-    }
+    self.emit('connect', { host: hostname, port: rpc_handler_port });
+    stream.write(request);
+  })
+    .on('error', function (err) { done(err); })
+    .on('data', function (buf) { responseRaw += buf.toString(); })
+    .on('end', function () {
+      var
+        lines = responseRaw.split('\n'),
+        flag = false, i, responseXml = '';
 
-    self.parseResponse(responseXml, function (er, res) {
-      if (er) {
-        cb(er, null);
-      } else if (!res.is_success) {
-        cb(res, null);
-      } else {
-        // remove redundant properties
-        delete res.protocol;
-        delete res.action;
-        delete res.object;
-        delete res.response_code;
-        cb(null, res);
+      self.emit('response', responseRaw);
+
+      for (i = 0; i < lines.length; i++) {
+        if (flag) {
+          responseXml += lines[i] + '\n';
+        } else if (/^<\?xml/.test(lines[i].trim())) {
+          flag = true;
+          i--;
+        } else if (lines[i].trim() === '') {
+          flag = true;
+        }
       }
+
+      if (responseXml === '') { return done(null, ''); }
+
+      self.parseResponse(responseXml, function (err, res) {
+        if (err) {
+          done(err, null);
+        } else if (!res.is_success) {
+          done(res, null);
+        } else {
+          // remove redundant properties
+          delete res.protocol;
+          delete res.action;
+          delete res.object;
+          delete res.response_code;
+          done(null, res);
+        }
+      });
     });
-  });
 
-  self.stream.write(request);
+  return rs;
 };
 
 // ### Parse XML response asynchronously
@@ -239,13 +230,13 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
   var parser = new xml.SaxParser(function (p) {
     var res, parent, currentKey;
 
-    p.onEndDocument(function() {
+    p.onEndDocument(function () {
       cb(null, res);
     });
 
-    p.onStartElementNS(function(elem, attrs) {
+    p.onStartElementNS(function (elem, attrs) {
       switch (elem) {
-      case 'dt_assoc' :
+      case 'dt_assoc':
         if (!res) {
           res = {};
         } else {
@@ -257,7 +248,7 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
         }
         break;
 
-      case 'dt_array' :
+      case 'dt_array':
         res[currentKey] = [];
         parent = res;
         res = res[currentKey];
@@ -265,17 +256,17 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
         currentKey = null;
         break;
 
-      case 'item' :
+      case 'item':
         currentKey = attrs[0][1];
         break;
 
-      default :
+      default:
         //console.log(elem);
         break;
       }
     });
 
-    p.onEndElementNS(function(elem) {
+    p.onEndElementNS(function (elem) {
       var isContainer = (elem === 'dt_assoc' || elem === 'dt_array');
 
       if (isContainer && res && res._parent) {
@@ -287,21 +278,21 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
       currentKey = null;
     });
 
-    p.onCharacters(function(chars) {
+    p.onCharacters(function (chars) {
       if (currentKey) {
         if (res.push) {
           res.push(chars);
         } else {
           switch (currentKey) {
-          case 'response_code' :
-          case 'page' :
-          case 'remainder' :
-          case 'total' :
-          case 'balance' :
-          case 'hold_balance' :
+          case 'response_code':
+          case 'page':
+          case 'remainder':
+          case 'total':
+          case 'balance':
+          case 'hold_balance':
             chars = Number(chars);
             break;
-          case 'is_success' :
+          case 'is_success':
             chars = Boolean(chars);
             break;
           }
@@ -311,8 +302,8 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
       }
     });
 
-    p.onWarning(function(msg) { cb(msg); });
-    p.onError(function(msg) { cb(msg); });
+    p.onWarning(function (msg) { cb(msg); });
+    p.onError(function (msg) { cb(msg); });
   });
 
   parser.parseString(responseXml);
@@ -320,6 +311,6 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
 
 /*}}}*/
 
-exports.createClient = function (options) {
+module.exports = function (options) {
   return new OpenSRS(options);
 };

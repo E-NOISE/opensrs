@@ -1,29 +1,32 @@
 {
   "name": "node-opensrs",
   "description": "OpenSRS Reseller API module for node.js.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
-  "config" : { "publishtest" : false },
-  "author" : "Lupo Montero <lupo@e-noise.com> (http://lupomontero.e-noise.com)",
-  "repository" : {
-    "type" : "git",
-    "url" : "https://github.com/lupomontero/node-opensrs"
+  "config": {
+    "publishtest": false
   },
-  "bugs" : {
-    "url" : "http://github.com/lupomontero/node-opensrs/issues"
+  "author": "Lupo Montero <lupo@e-noise.com> (http://lupomontero.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/E-NOISE/node-opensrs"
+  },
+  "bugs": {
+    "url": "http://github.com/E-NOISE/node-opensrs/issues"
   },
   "directories": {
-    "test": "./test",
-    "doc": "./docs"
-  },
-  "main": "lib/opensrs",
-  "dependencies": {
-    "node-xml": "git+ssh://git@github.com:lupomontero/node-xml.git#v1.0.0"
+    "test": "./test"
   },
   "devDependencies": {
-    "vows": ">= 0.6.0",
-    "jslint": ">= 0.1.0",
-    "docco": ">= 0.3.0"
+    "grunt": "~0.4.0",
+    "grunt-jslint": "~0.2.5",
+    "grunt-contrib-nodeunit": "~0.1.2"
   },
-  "engines": { "node": ">= 0.6.2" }
+  "engines": {
+    "node": "0.8.x"
+  },
+  "dependencies": {
+    "node-xml": "~1.0.2",
+    "underscore": "~1.4.4"
+  }
 }
