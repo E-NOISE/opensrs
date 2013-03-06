@@ -10,8 +10,6 @@
 
 var
   Stream = require('stream'),
-  util = require('util'),
-  events = require('events'),
   tls = require('tls'),
   crypto = require('crypto'),
   xml = require('node-xml'),
@@ -29,46 +27,44 @@ var
   };
 
 // ## Private functions
-
 /*{{{*/
 
-var buildXmlPayload = function (obj, action, attr) {
-  var
-    xml = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\r\n',
-    buildDataBlock = function buildDataBlock(data) {
-      var
-        key,
-        str = '',
-        isNonEmptyObj = function (o) {
-          var k, count = 0;
+function isNonEmptyObj(o) {
+  var k, count = 0;
+  if (typeof o !== 'object') { return false; }
+  for (k in o) { if (o.hasOwnProperty(k)) { count++; } }
+  return (count > 0);
+}
 
-          if (typeof o !== 'object') { return false; }
+function createResponse() {
+  var s = new Stream();
+  s.readable = true;
+  return s;
+}
 
-          for (k in o) { if (o.hasOwnProperty(k)) { count++; } }
+function buildDataBlock(data) {
+  var key, str = '', tag = (_.isArray(data)) ? 'dt_array' : 'dt_assoc';
 
-          return (count > 0);
-        },
-        tag = (util.isArray(data)) ? 'dt_array' : 'dt_assoc';
+  str += '<' + tag + '>\r\n';
 
-      str += '<' + tag + '>\r\n';
-
-      for (key in data) {
-        if (data.hasOwnProperty(key)) {
-          if (util.isArray(data[key]) || isNonEmptyObj(data[key])) {
-            str += '<item key="' + key + '">\r\n';
-            str += buildDataBlock(data[key]);
-            str += '</item>\r\n';
-          } else if (data[key]) {
-            str += '<item key="' + key + '">' + data[key] + '</item>\r\n';
-          }
-        }
+  for (key in data) {
+    if (data.hasOwnProperty(key)) {
+      if (_.isArray(data[key]) || isNonEmptyObj(data[key])) {
+        str += '<item key="' + key + '">\r\n';
+        str += buildDataBlock(data[key]);
+        str += '</item>\r\n';
+      } else if (data[key]) {
+        str += '<item key="' + key + '">' + data[key] + '</item>\r\n';
       }
+    }
+  }
 
-      str += '</' + tag + '>\r\n';
+  str += '</' + tag + '>\r\n';
+  return str;
+}
 
-      return str;
-    };
-
+function buildXmlPayload(obj, action, attr) {
+  var xml = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\r\n';
   xml += '<!DOCTYPE OPS_envelope SYSTEM "ops.dtd">\r\n';
   xml += '<OPS_envelope>\r\n';
   xml += '<header>\r\n';
@@ -80,40 +76,30 @@ var buildXmlPayload = function (obj, action, attr) {
   xml += '</data_block>\r\n';
   xml += '</body>\r\n';
   xml += '</OPS_envelope>\r\n';
-
   return xml;
-};
+}
 
-var signRequest = function (xml, key) {
+function signRequest(xml, key) {
   var hash = crypto.createHash('md5'), tmp;
-
   hash.update(xml + key);
   tmp = hash.digest('hex');
   hash = crypto.createHash('md5');
   hash.update(tmp + key);
   return hash.digest('hex');
-};
+}
 
-var buildRequest = function (host, user, key, xml) {
-  var
-    eol = '\r\n',
-    headers = 'POST ' + host + ' HTTP/1.0' + eol;
-
-  headers += 'Content-Type: text/xml' + eol;
-  headers += 'X-Username: ' + user + eol;
-  headers += 'X-Signature: ' + signRequest(xml, key) + eol;
-  headers += 'Content-Length: ' + xml.length + eol;
-
-  return headers + eol + xml;
-};
+function buildRequest(host, user, key, xml) {
+  return [
+    'POST ' + host + ' HTTP/1.0',
+    'Content-Type: text/xml',
+    'X-Username: ' + user,
+    'X-Signature: ' + signRequest(xml, key),
+    'Content-Length: ' + xml.length,
+    xml
+  ].join('\r\n');
+}
 
 /*}}}*/
-
-function createResponse() {
-  var s = new Stream();
-  s.readable = true;
-  return s;
-}
 
 // ## OpenSRS Client Object
 
@@ -127,9 +113,6 @@ var OpenSRS = function (options) {
   this.options = _.extend({}, defaults, options);
   this._activeRequests = 0;
 };
-
-// inherit events.EventEmitter
-util.inherits(OpenSRS, events.EventEmitter);
 
 // ### Send API request.
 //
@@ -167,15 +150,11 @@ OpenSRS.prototype.req = function () {
   }
 
   self._activeRequests++;
-  self.emit('request', request);
-
   stream = tls.connect(rpc_handler_port, hostname, function () {
     if (!stream || !stream.readable || !stream.writable) {
       return done(new Error('Could not connect to server ' + hostname +
                             ' on port ' + rpc_handler_port));
     }
-
-    self.emit('connect', { host: hostname, port: rpc_handler_port });
     stream.write(request);
   })
     .on('error', function (err) { done(err); })
@@ -184,8 +163,6 @@ OpenSRS.prototype.req = function () {
       var
         lines = responseRaw.split('\n'),
         flag = false, i, responseXml = '';
-
-      self.emit('response', responseRaw);
 
       for (i = 0; i < lines.length; i++) {
         if (flag) {

@@ -142,40 +142,14 @@ exports.parseDomainsByExpireDateResponse = function (t) {
   });
 };
 
-exports.onConnectEvent = function (t) {
-  var client = opensrs(config), count = 0;
-  function done() { if (++count === 2) { t.done(); } }
-  client.on('connect', function (server) {
-    t.ok(server.host);
-    t.ok(server.port);
-    done();
-  });
+exports.getBalance = function (t) {
+  var client = opensrs(config);
   client.req('balance', 'get_balance', function (err, data) {
     t.ok(!err);
     t.ok(data.response_text);
     t.ok(data.attributes);
     t.equal(data.is_success, true);
-    done();
-  });
-};
-
-exports.onRequestEvent = function (t) {
-  var client = opensrs(config), count = 0;
-  function done() { if (++count === 2) { t.done(); } }
-  client.on('request', function (req) {
-    t.equal(typeof req, 'string');
-    t.ok('^POST horizon.opensrs.net HTTP/1.0');
-    t.ok(/OPS_envelope/.test(req));
-    done();
-  });
-  client.req('balance', 'get_balance', function (err, data) {
-    t.ok(!err);
-    t.ok(data.response_text);
-    t.ok(data.attributes);
-    t.equal(typeof data.attributes.balance, 'number');
-    t.equal(typeof data.attributes.hold_balance, 'number');
-    t.equal(data.is_success, true);
-    done();
+    t.done();
   });
 };
 
@@ -202,15 +176,6 @@ exports.getBalanceResponseStream = function (t) {
     t.ok(data && data.is_success);
     t.done();
   });
-};
-
-exports.logRequestsAndResponses = function (t) {
-  var client = opensrs(config), count = 0;
-  function done() { if (++count === 4) { t.done(); } }
-  client.on('request', function () { done(); });
-  client.on('response', function () { done(); });
-  client.req('balance', 'get_balance');
-  client.req('balance', 'get_balance');
 };
 
 exports.multipleSequentialAndConcurrentCalls = function (t) {
