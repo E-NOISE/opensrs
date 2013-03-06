@@ -147,11 +147,61 @@ exports.getBalance = function (t) {
   client.req('balance', 'get_balance', function (err, data) {
     t.ok(!err);
     t.ok(data.response_text);
+    t.equal(data.response_code, 200);
     t.ok(data.attributes);
     t.equal(data.is_success, true);
     t.done();
   });
 };
+
+exports.domainLookupNoDomainParamFailure = function (t) {
+  var client = opensrs(config);
+  client.req('domain', 'lookup', function (err, data) {
+    t.ok(!err);
+    t.ok(data.response_text);
+    t.equal(data.response_code, 701);
+    t.equal(data.is_success, true);
+    t.done();
+  });
+};
+
+exports.domainLookupBadDomainFailure = function (t) {
+  var client = opensrs(config);
+  client.req('domain', 'lookup', { domain: 'xxx' }, function (err, data) {
+    t.ok(!err);
+    t.ok(data.response_text);
+    t.equal(data.response_code, 701);
+    t.equal(data.is_success, true);
+    t.done();
+  });
+};
+
+exports.domainLookupAvailable = function (t) {
+  var client = opensrs(config);
+  client.req('domain', 'lookup', { domain: 'lupomontero.com' }, function (err, data) {
+    t.ok(!err);
+    t.equal(data.response_text, 'Domain available');
+    t.equal(data.response_code, 210);
+    t.ok(data.attributes);
+    t.equal(data.attributes.status, 'available');
+    t.equal(data.is_success, true);
+    t.done();
+  });
+};
+
+exports.domainLookupTaken = function (t) {
+  var client = opensrs(config);
+  client.req('domain', 'lookup', { domain: 'e-noise-test9.com' }, function (err, data) {
+    t.ok(!err);
+    t.equal(data.response_text, 'Domain taken');
+    t.equal(data.response_code, 211);
+    t.ok(data.attributes);
+    t.equal(data.attributes.status, 'taken');
+    t.equal(data.is_success, true);
+    t.done();
+  });
+};
+
 
 exports.getDomainsByExpireDate = function (t) {
   var
@@ -166,6 +216,7 @@ exports.getDomainsByExpireDate = function (t) {
   client.req('domain', 'get_domains_by_expiredate', params, function (err, data) {
     t.ok(!err);
     t.ok(data && data.is_success);
+    t.equal(data.response_code, 200);
     t.ok(data.attributes && data.attributes.exp_domains);
     t.done();
   });
@@ -174,6 +225,7 @@ exports.getDomainsByExpireDate = function (t) {
 exports.getBalanceResponseStream = function (t) {
   opensrs(config).req('balance', 'get_balance').on('data', function (data) {
     t.ok(data && data.is_success);
+    t.equal(data.response_code, 200);
     t.done();
   });
 };
@@ -194,15 +246,18 @@ exports.multipleSequentialAndConcurrentCalls = function (t) {
   }
 
   client.req('balance', 'get_balance', function (err, data) {
+    t.equal(data.response_code, 200);
     done();
   });
   client.req('domain', 'get_domains_by_expiredate', params, function (err, data) {
+    t.equal(data.response_code, 200);
     done();
   });
   client.req('balance', 'get_balance', function (err, data) {
     client.req('domain', 'get_domains_by_expiredate', params, function (err, data) {
       t.ok(!err);
       t.ok(data && data.is_success);
+      t.equal(data.response_code, 200);
       t.ok(data.attributes && data.attributes.exp_domains);
       done();
     });

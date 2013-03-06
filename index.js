@@ -194,7 +194,6 @@ OpenSRS.prototype.req = function () {
           delete res.protocol;
           delete res.action;
           delete res.object;
-          delete res.response_code;
           done(null, res);
         }
       });
@@ -231,7 +230,6 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
           currentKey = null;
         }
         break;
-
       case 'dt_array':
         res[currentKey] = [];
         parent = res;
@@ -239,11 +237,9 @@ OpenSRS.prototype.parseResponse = function (responseXml, cb) {
         res._parent = parent;
         currentKey = null;
         break;
-
       case 'item':
         currentKey = attrs[0][1];
         break;
-
       default:
         //console.log(elem);
         break;
