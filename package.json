@@ -17,16 +17,20 @@
   "directories": {
     "test": "./test"
   },
+  "dependencies": {
+    "node-xml": "~1.0.2",
+    "underscore": "~1.4.4"
+  },
   "devDependencies": {
     "grunt": "~0.4.0",
     "grunt-jslint": "~0.2.5",
     "grunt-contrib-nodeunit": "~0.1.2"
   },
+  "scripts": {
+    "pretest": "grunt jslint",
+    "test": "grunt nodeunit"
+  },
   "engines": {
     "node": "0.8.x"
-  },
-  "dependencies": {
-    "node-xml": "~1.0.2",
-    "underscore": "~1.4.4"
   }
 }
