@@ -14,6 +14,7 @@ var
   crypto = require('crypto'),
   xml = require('node-xml'),
   _ = require('underscore'),
+  eol = '\r\n',
   rpc_handler_version = '0.9',
   rpc_handler_port = 55443,
   host = function (testMode) {
@@ -45,38 +46,44 @@ function createResponse() {
 function buildDataBlock(data) {
   var key, str = '', tag = (_.isArray(data)) ? 'dt_array' : 'dt_assoc';
 
-  str += '<' + tag + '>\r\n';
+  str += '<' + tag + '>' + eol;
 
   for (key in data) {
     if (data.hasOwnProperty(key)) {
       if (_.isArray(data[key]) || isNonEmptyObj(data[key])) {
-        str += '<item key="' + key + '">\r\n';
+        str += '<item key="' + key + '">' + eol;
         str += buildDataBlock(data[key]);
-        str += '</item>\r\n';
+        str += '</item>' + eol;
       } else if (data[key]) {
-        str += '<item key="' + key + '">' + data[key] + '</item>\r\n';
+        str += '<item key="' + key + '">' + data[key] + '</item>' + eol;
       }
     }
   }
 
-  str += '</' + tag + '>\r\n';
+  str += '</' + tag + '>' + eol;
   return str;
 }
 
 function buildXmlPayload(obj, action, attr) {
-  var xml = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\r\n';
-  xml += '<!DOCTYPE OPS_envelope SYSTEM "ops.dtd">\r\n';
-  xml += '<OPS_envelope>\r\n';
-  xml += '<header>\r\n';
-  xml += '<version>' + rpc_handler_version + '</version>\r\n';
-  xml += '</header>\r\n';
-  xml += '<body>\r\n';
-  xml += '<data_block>\r\n';
-  xml += buildDataBlock({ protocol: 'XCP', object: obj, action: action, attributes: attr });
-  xml += '</data_block>\r\n';
-  xml += '</body>\r\n';
-  xml += '</OPS_envelope>\r\n';
-  return xml;
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
+    '<!DOCTYPE OPS_envelope SYSTEM "ops.dtd">',
+    '<OPS_envelope>',
+    '<header>',
+    '<version>' + rpc_handler_version + '</version>',
+    '</header>',
+    '<body>',
+    '<data_block>',
+    buildDataBlock({
+      protocol: 'XCP',
+      object: obj,
+      action: action,
+      attributes: attr
+    }),
+    '</data_block>',
+    '</body>',
+    '</OPS_envelope>'
+  ].join(eol);
 }
 
 function signRequest(xml, key) {
@@ -95,8 +102,8 @@ function buildRequest(host, user, key, xml) {
     'X-Username: ' + user,
     'X-Signature: ' + signRequest(xml, key),
     'Content-Length: ' + xml.length,
-    xml
-  ].join('\r\n');
+    eol + xml
+  ].join(eol);
 }
 
 /*}}}*/
