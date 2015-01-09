@@ -1,0 +1,4 @@
+.travis.yml
+config.json.enc
+gulpfile.js
+test/
