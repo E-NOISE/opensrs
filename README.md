@@ -1,6 +1,9 @@
 # node-opensrs
 
-OpenSRS Reseller XML API module for `node.js`.
+[![Build Status](https://travis-ci.org/E-NOISE/opensrs.svg?branch=master)](https://travis-ci.org/E-NOISE/opensrs)
+[![Dependencies](https://david-dm.org/E-NOISE/opensrs.svg?style=flat)](https://david-dm.org/E-NOISE/opensrs)
+
+Node.js client for the OpenSRS Reseller XML API.
 
 More info here about the OpenSRS Reseller API:
 [OpenSRS XML API](http://www.opensrs.com/docs/opensrs_xmlapi.pdf)

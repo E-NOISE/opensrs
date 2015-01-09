@@ -8,7 +8,7 @@
     "url": "https://github.com/E-NOISE/opensrs"
   },
   "bugs": {
-    "url": "http://github.com/E-NOISE/node-opensrs/issues"
+    "url": "http://github.com/E-NOISE/opensrs/issues"
   },
   "directories": {
     "test": "./test"
