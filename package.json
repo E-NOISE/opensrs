@@ -1,7 +1,7 @@
 {
   "name": "opensrs",
   "description": "OpenSRS Reseller API module for node.js.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Lupo Montero <lupo@enoi.se> (http://lupomontero.com)",
   "repository": {
     "type": "git",
