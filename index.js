@@ -2,9 +2,9 @@
 // Dependencies
 //
 var tls = require('tls');
+var util = require('util');
 var crypto = require('crypto');
 var xml = require('node-xml');
-var _ = require('lodash');
 
 
 var eol = '\r\n';
@@ -19,6 +19,28 @@ var defaults = {
 };
 
 
+function isObject(obj) {
+  var type = typeof obj;
+  return type === 'function' || type === 'object' && !!obj;
+}
+
+
+function extend(obj) {
+  if (!isObject(obj)) return obj;
+  var source, prop;
+  var hasOwnProperty = Object.prototype.hasOwnProperty;
+  for (var i = 1, length = arguments.length; i < length; i++) {
+    source = arguments[i];
+    for (prop in source) {
+      if (hasOwnProperty.call(source, prop)) {
+          obj[prop] = source[prop];
+      }
+    }
+  }
+  return obj;
+}
+
+
 function isNonEmptyObj(o) {
   var k, count = 0;
   if (typeof o !== 'object') { return false; }
@@ -29,13 +51,13 @@ function isNonEmptyObj(o) {
 
 function buildDataBlock(data) {
   var key, str = '';
-  var tag = (_.isArray(data)) ? 'dt_array' : 'dt_assoc';
+  var tag = (util.isArray(data)) ? 'dt_array' : 'dt_assoc';
 
   str += '<' + tag + '>' + eol;
 
   for (key in data) {
     if (data.hasOwnProperty(key)) {
-      if (_.isArray(data[key]) || isNonEmptyObj(data[key])) {
+      if (util.isArray(data[key]) || isNonEmptyObj(data[key])) {
         str += '<item key="' + key + '">' + eol;
         str += buildDataBlock(data[key]);
         str += '</item>' + eol;
@@ -188,11 +210,11 @@ function parseResponse(responseXml, cb) {
 
 module.exports = function (options) {
 
-  var settings = _.extend({}, defaults, options);
+  var settings = extend({}, defaults, options);
   var host = (settings.sandbox) ? 'horizon.opensrs.net' : 'rr-n1-tor.opensrs.net';
   var activeRequests = 0;
 
-  if (!_.isString(settings.user) || !_.isString(settings.key)) {
+  if (typeof settings.user !== 'string' || typeof settings.key !== 'string') {
     throw new TypeError('options.user and options.key must be strings');
   }
 
