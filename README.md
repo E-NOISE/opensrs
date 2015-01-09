@@ -28,7 +28,7 @@ client('balance', 'get_balance', function (err, data) {
   //...
 });
 
-client('domain', 'lookup', function (err, data) {
+client('domain', 'lookup', { domain: 'foo.com' }, function (err, data) {
   //...
 });
 ```
