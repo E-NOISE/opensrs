@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/E-NOISE/opensrs.svg?branch=master)](https://travis-ci.org/E-NOISE/opensrs)
 [![Dependency Status](https://david-dm.org/E-NOISE/opensrs.svg?style=flat)](https://david-dm.org/E-NOISE/opensrs)
-[![devDependency Status](https://david-dm.org/wrangr/opensrs/dev-status.png)](https://david-dm.org/wrangr/opensrs#info=devDependencies)
+[![devDependency Status](https://david-dm.org/E-NOISE/opensrs/dev-status.png)](https://david-dm.org/E-NOISE/opensrs#info=devDependencies)
 
 Node.js client for the [OpenSRS Reseller XML API](http://www.opensrs.com/docs/opensrs_xmlapi.pdf).
 
