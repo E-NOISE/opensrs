@@ -1,12 +1,17 @@
-var assert = require('assert');
-var opensrs = require('../');
+'use strict';
 
 
-describe('opensrs', function () {
+const Assert = require('assert');
+const OpenSRS = require('../');
 
-  it('should throw when user or key not passed', function () {
-    assert.throws(function () {
-      var client = opensrs();
+
+describe('OpenSRS', () => {
+
+  it('should throw when user or key not passed', () => {
+
+    Assert.throws(() => {
+
+      OpenSRS();
     }, TypeError);
   });
 
@@ -15,18 +20,21 @@ describe('opensrs', function () {
 });
 
 
-describe('opensrs._parseResponse', function () {
+describe('OpenSRS._parseResponse', () => {
 
-  it('should throw when bad xml', function (done) {
-    opensrs._parseResponse('<i><am><broken</i>', function (err, data) {
-      assert.ok(err);
-      assert.ok(!data);
+  it('should throw when bad xml', (done) => {
+
+    OpenSRS._parseResponse('<i><am><broken</i>', (err, data) => {
+
+      Assert.ok(err);
+      Assert.ok(!data);
       done();
     });
   });
 
-  it('should parse a balance xml response', function (done) {
-    var xml = '<?xml version=\'1.0\' encoding="UTF-8" standalone="no" ?>' +
+  it('should parse a balance xml response', (done) => {
+
+    const xml = '<?xml version=\'1.0\' encoding="UTF-8" standalone="no" ?>' +
       '<!DOCTYPE OPS_envelope SYSTEM "ops.dtd">' +
       '<OPS_envelope>' +
       ' <header>' +
@@ -52,25 +60,27 @@ describe('opensrs._parseResponse', function () {
       ' </body>' +
       '</OPS_envelope>';
 
-    opensrs._parseResponse(xml, function (err, data) {
-      assert.ok(!err);
-      assert.ok(data);
-      assert.equal(data.protocol, 'XCP');
-      assert.equal(data.object, 'BALANCE');
-      assert.equal(data.response_text, 'Command successful');
-      assert.equal(data.action, 'REPLY');
-      assert.equal(data.response_code, 200);
-      assert.equal(data.is_success, true);
-      assert.equal(typeof data.attributes, 'object');
-      assert.equal(data.attributes.balance, 215.14);
-      assert.equal(data.attributes.hold_balance, 10.34);
+    OpenSRS._parseResponse(xml, (err, data) => {
+
+      Assert.ok(!err);
+      Assert.ok(data);
+      Assert.equal(data.protocol, 'XCP');
+      Assert.equal(data.object, 'BALANCE');
+      Assert.equal(data.response_text, 'Command successful');
+      Assert.equal(data.action, 'REPLY');
+      Assert.equal(data.response_code, 200);
+      Assert.equal(data.is_success, true);
+      Assert.equal(typeof data.attributes, 'object');
+      Assert.equal(data.attributes.balance, 215.14);
+      Assert.equal(data.attributes.hold_balance, 10.34);
       done();
     });
-  
+
   });
 
-  it('should parse a domains by expire date response', function (done) {
-    var xml = '<?xml version=\'1.0\' encoding="UTF-8" standalone="no" ?>' +
+  it('should parse a domains by expire date response', (done) => {
+
+    const xml = '<?xml version=\'1.0\' encoding="UTF-8" standalone="no" ?>' +
       '<!DOCTYPE OPS_envelope SYSTEM "ops.dtd">' +
       '<OPS_envelope>' +
       ' <header>' +
@@ -125,27 +135,27 @@ describe('opensrs._parseResponse', function () {
       ' </body>' +
       '</OPS_envelope>';
 
-    opensrs._parseResponse(xml, function (err, data) {
-      assert.ok(!err);
-      assert.equal(data.protocol, 'XCP');
-      assert.equal(data.object, 'DOMAIN');
-      assert.equal(data.response_text, 'Command successful');
-      assert.equal(data.action, 'REPLY');
-      assert.equal(data.response_code, 200);
-      assert.equal(data.is_success, true);
-      assert.equal(typeof data.attributes, 'object');
-      assert.equal(data.attributes.page, 1);
-      assert.equal(data.attributes.remainder, 1);
-      assert.equal(data.attributes.total, 25);
-      assert.ok(data.attributes.exp_domains);
-      assert.ok(data.attributes.exp_domains.length > 0);
-      assert.ok(data.attributes.exp_domains[0].hasOwnProperty('name'));
-      assert.ok(data.attributes.exp_domains[0].hasOwnProperty('expiredate'));
-      assert.ok(data.attributes.exp_domains[0].hasOwnProperty('f_let_expire'));
-      assert.ok(data.attributes.exp_domains[0].hasOwnProperty('f_auto_renew'));
+    OpenSRS._parseResponse(xml, (err, data) => {
+
+      Assert.ok(!err);
+      Assert.equal(data.protocol, 'XCP');
+      Assert.equal(data.object, 'DOMAIN');
+      Assert.equal(data.response_text, 'Command successful');
+      Assert.equal(data.action, 'REPLY');
+      Assert.equal(data.response_code, 200);
+      Assert.equal(data.is_success, true);
+      Assert.equal(typeof data.attributes, 'object');
+      Assert.equal(data.attributes.page, 1);
+      Assert.equal(data.attributes.remainder, 1);
+      Assert.equal(data.attributes.total, 25);
+      Assert.ok(data.attributes.exp_domains);
+      Assert.ok(data.attributes.exp_domains.length > 0);
+      Assert.ok(data.attributes.exp_domains[0].hasOwnProperty('name'));
+      Assert.ok(data.attributes.exp_domains[0].hasOwnProperty('expiredate'));
+      Assert.ok(data.attributes.exp_domains[0].hasOwnProperty('f_let_expire'));
+      Assert.ok(data.attributes.exp_domains[0].hasOwnProperty('f_auto_renew'));
       done();
     });
   });
 
 });
-

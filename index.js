@@ -1,67 +1,91 @@
+'use strict';
+
+
 //
 // Dependencies
 //
-var tls = require('tls');
-var util = require('util');
-var crypto = require('crypto');
-var xml = require('node-xml');
+const Tls = require('tls');
+const Util = require('util');
+const Crypto = require('crypto');
+const Xml = require('node-xml');
 
 
-var eol = '\r\n';
-var rpc_handler_version = '0.9';
-var rpc_handler_port = 55443;
+const eol = '\r\n';
+const rpc_handler_version = '0.9';
+const rpc_handler_port = 55443;
 
 
-var defaults = {
+const defaults = {
   user: null,
   key: null,
   sandbox: false
 };
 
 
-function isObject(obj) {
-  var type = typeof obj;
+const isObject = (obj) => {
+
+  const type = typeof obj;
   return type === 'function' || type === 'object' && !!obj;
-}
+};
 
 
-function extend(obj) {
-  if (!isObject(obj)) return obj;
-  var source, prop;
-  var hasOwnProperty = Object.prototype.hasOwnProperty;
-  for (var i = 1, length = arguments.length; i < length; i++) {
-    source = arguments[i];
-    for (prop in source) {
+const extend = (obj, ...args) => {
+
+  if (!isObject(obj)) {
+    return obj;
+  }
+
+  const hasOwnProperty = Object.prototype.hasOwnProperty;
+  let source;
+
+  for (let i = 0; i < args.length; ++i) {
+    source = args[i];
+    for (const prop in source) {
       if (hasOwnProperty.call(source, prop)) {
-          obj[prop] = source[prop];
+        obj[prop] = source[prop];
       }
     }
   }
+
   return obj;
-}
+};
 
 
-function isNonEmptyObj(o) {
-  var k, count = 0;
-  if (typeof o !== 'object') { return false; }
-  for (k in o) { if (o.hasOwnProperty(k)) { count++; } }
+const isNonEmptyObj = (o) => {
+
+  let k;
+  let count = 0;
+
+  if (typeof o !== 'object') {
+    return false;
+  }
+
+  for (k in o) {
+    if (o.hasOwnProperty(k)) {
+      count++;
+    }
+  }
+
   return (count > 0);
-}
+};
 
 
-function buildDataBlock(data) {
-  var key, str = '';
-  var tag = (util.isArray(data)) ? 'dt_array' : 'dt_assoc';
+const buildDataBlock = (data) => {
+
+  let key;
+  let str = '';
+  const tag = (Util.isArray(data)) ? 'dt_array' : 'dt_assoc';
 
   str += '<' + tag + '>' + eol;
 
   for (key in data) {
     if (data.hasOwnProperty(key)) {
-      if (util.isArray(data[key]) || isNonEmptyObj(data[key])) {
+      if (Util.isArray(data[key]) || isNonEmptyObj(data[key])) {
         str += '<item key="' + key + '">' + eol;
         str += buildDataBlock(data[key]);
         str += '</item>' + eol;
-      } else if (data[key]) {
+      }
+      else if (data[key]) {
         str += '<item key="' + key + '">' + data[key] + '</item>' + eol;
       }
     }
@@ -69,10 +93,11 @@ function buildDataBlock(data) {
 
   str += '</' + tag + '>' + eol;
   return str;
-}
+};
 
 
-function buildXmlPayload(obj, action, attr) {
+const buildXmlPayload = (obj, action, attr) => {
+
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
     '<!DOCTYPE OPS_envelope SYSTEM "ops.dtd">',
@@ -85,27 +110,29 @@ function buildXmlPayload(obj, action, attr) {
     buildDataBlock({
       protocol: 'XCP',
       object: obj,
-      action: action,
+      action,
       attributes: attr
     }),
     '</data_block>',
     '</body>',
     '</OPS_envelope>'
   ].join(eol);
-}
+};
 
 
-function signRequest(xml, key) {
-  var hash = crypto.createHash('md5'), tmp;
+const signRequest = (xml, key) => {
+
+  let hash = Crypto.createHash('md5');
   hash.update(xml + key);
-  tmp = hash.digest('hex');
-  hash = crypto.createHash('md5');
+  const tmp = hash.digest('hex');
+  hash = Crypto.createHash('md5');
   hash.update(tmp + key);
   return hash.digest('hex');
-}
+};
 
 
-function buildRequest(host, user, key, xml) {
+const buildRequest = (host, user, key, xml) => {
+
   return [
     'POST ' + host + ' HTTP/1.0',
     'Content-Type: text/xml',
@@ -114,7 +141,7 @@ function buildRequest(host, user, key, xml) {
     'Content-Length: ' + xml.length,
     eol + xml
   ].join(eol);
-}
+};
 
 
 //
@@ -127,20 +154,27 @@ function buildRequest(host, user, key, xml) {
 //   This function will have two arguments: an error object and the
 //   parsed data. If successful the error object will be null.
 //
-function parseResponse(responseXml, cb) {
-  var parser = new xml.SaxParser(function (p) {
-    var res, parent, currentKey;
+const parseResponse = (responseXml, cb) => {
 
-    p.onEndDocument(function () {
+  const parser = new Xml.SaxParser((p) => {
+
+    let res;
+    let parent;
+    let currentKey;
+
+    p.onEndDocument(() => {
+
       cb(null, res);
     });
 
-    p.onStartElementNS(function (elem, attrs) {
+    p.onStartElementNS((elem, attrs) => {
+
       switch (elem) {
       case 'dt_assoc':
         if (!res) {
           res = {};
-        } else {
+        }
+        else {
           res[currentKey] = {};
           parent = res;
           res = res[currentKey];
@@ -164,8 +198,9 @@ function parseResponse(responseXml, cb) {
       }
     });
 
-    p.onEndElementNS(function (elem) {
-      var isContainer = (elem === 'dt_assoc' || elem === 'dt_array');
+    p.onEndElementNS((elem) => {
+
+      const isContainer = (elem === 'dt_assoc' || elem === 'dt_array');
 
       if (isContainer && res && res._parent) {
         parent = res._parent;
@@ -176,11 +211,13 @@ function parseResponse(responseXml, cb) {
       currentKey = null;
     });
 
-    p.onCharacters(function (chars) {
+    p.onCharacters((chars) => {
+
       if (currentKey) {
         if (res.push) {
           res.push(chars);
-        } else {
+        }
+        else {
           switch (currentKey) {
           case 'response_code':
           case 'page':
@@ -200,19 +237,19 @@ function parseResponse(responseXml, cb) {
       }
     });
 
-    p.onWarning(function (msg) { cb(msg); });
-    p.onError(function (msg) { cb(msg); });
+    p.onWarning((msg) => cb(msg));
+    p.onError((msg) => cb(msg));
   });
 
   parser.parseString(responseXml);
-}
+};
 
 
-module.exports = function (options) {
+module.exports = (options) => {
 
-  var settings = extend({}, defaults, options);
-  var host = (settings.sandbox) ? 'horizon.opensrs.net' : 'rr-n1-tor.opensrs.net';
-  var activeRequests = 0;
+  const settings = extend({}, defaults, options);
+  const host = (settings.sandbox) ? 'horizon.opensrs.net' : 'rr-n1-tor.opensrs.net';
+  let activeRequests = 0;
 
   if (typeof settings.user !== 'string' || typeof settings.key !== 'string') {
     throw new TypeError('options.user and options.key must be strings');
@@ -231,54 +268,71 @@ module.exports = function (options) {
   //   This function will have two arguments , an error object and the
   //   response data. If successful the error object will be null.
   //
-  var client = function () {
-    var args = Array.prototype.slice.call(arguments, 0);
-    var obj = args.shift();
-    var method = args.shift();
-    var cb = args.pop() || function () {};
-    var params = args.shift();
-    var xml = buildXmlPayload(obj, method, params);
-    var request = buildRequest(host, settings.user, settings.key, xml);
-    var responseRaw = '';
+  const client = (...args) => {
 
-    function done(err, data) {
+    const obj = args.shift();
+    const method = args.shift();
+    const cb = args.pop() || (() => {});
+    const params = args.shift();
+    const xml = buildXmlPayload(obj, method, params);
+    const request = buildRequest(host, settings.user, settings.key, xml);
+    let responseRaw = '';
+
+    const done = (err, data) => {
+
       activeRequests--;
       cb(err, data);
-    }
+    };
 
     activeRequests++;
-    var stream = tls.connect(rpc_handler_port, host, function () {
+    const stream = Tls.connect(rpc_handler_port, host, () => {
+
       if (!stream || !stream.readable || !stream.writable) {
         return done(new Error('Could not connect to server ' + host +
                               ' on port ' + rpc_handler_port));
       }
       stream.write(request);
     })
-      .on('error', function (err) { done(err); })
-      .on('data', function (buf) { responseRaw += buf.toString(); })
-      .on('end', function () {
-        var lines = responseRaw.split('\n');
-        var flag = false, i, responseXml = '';
+      .on('error', (err) => {
 
-        for (i = 0; i < lines.length; i++) {
+        done(err);
+      })
+      .on('data', (buf) => {
+
+        responseRaw += buf.toString();
+      })
+      .on('end', () => {
+
+        const lines = responseRaw.split('\n');
+        let flag = false;
+        let responseXml = '';
+
+        for (let i = 0; i < lines.length; ++i) {
           if (flag) {
             responseXml += lines[i] + '\n';
-          } else if (/^<\?xml/.test(lines[i].trim())) {
+          }
+          else if (/^<\?xml/.test(lines[i].trim())) {
             flag = true;
             i--;
-          } else if (lines[i].trim() === '') {
+          }
+          else if (lines[i].trim() === '') {
             flag = true;
           }
         }
 
-        if (responseXml === '') { return done(null, ''); }
+        if (responseXml === '') {
+          return done(null, '');
+        }
 
-        parseResponse(responseXml, function (err, res) {
+        parseResponse(responseXml, (err, res) => {
+
           if (err) {
             done(err, null);
-          } else if (!res.is_success) {
+          }
+          else if (!res.is_success) {
             done(res, null);
-          } else {
+          }
+          else {
             // remove redundant properties
             delete res.protocol;
             delete res.action;
@@ -289,7 +343,10 @@ module.exports = function (options) {
       });
   };
 
-  client._activeRequests = function () { return activeRequests; };
+  client._activeRequests = () => {
+
+    return activeRequests;
+  };
 
   return client;
 
@@ -298,4 +355,3 @@ module.exports = function (options) {
 
 // Export `parseResponse` for testing
 module.exports._parseResponse = parseResponse;
-
