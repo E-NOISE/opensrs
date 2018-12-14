@@ -161,6 +161,8 @@ const parseResponse = (responseXml, cb) => {
     let res;
     let parent;
     let currentKey;
+    let oldKey;
+    let currentKeyStringParts;
 
     p.onEndDocument(() => {
 
@@ -233,6 +235,17 @@ const parseResponse = (responseXml, cb) => {
           }
 
           res[currentKey] = chars;
+          if (typeof chars === 'string'){
+              if(oldKey !== currentKey) {
+                  oldKey = currentKey;
+                  currentKeyStringParts = "";
+                  res[currentKey] = currentKeyStringParts;
+              }
+              if(oldKey === currentKey) {
+                  currentKeyStringParts += chars;
+                  res[currentKey] = currentKeyStringParts;
+              }
+          }
         }
       }
     });
